@@ -126,11 +126,8 @@ h2.c1{color:var(--v1)} h2.c2{color:var(--v2)}
 .vsel{display:flex;gap:10px;margin-bottom:14px}
 /* 未読コメント数のバッジ（LINE風の赤丸） */
 .badge{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:99px;background:#e0301e;color:#fff;font-size:12.5px;font-weight:800;line-height:1;font-style:normal;font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px #fff}
-.vbtn .badge{position:absolute;top:-9px;right:-7px}
-nav button{position:relative}
-nav .badge{position:absolute;top:4px;left:calc(50% + 30px);min-width:18px;height:18px;font-size:11px;padding:0 5px}
 .cbar .badge{box-shadow:none}
-.vbtn{position:relative;flex:1;min-width:0;border-radius:14px;border:2px solid;background:#fff;padding:10px 10px 9px;text-align:left;display:grid;grid-template-columns:1fr auto;gap:0 6px;align-items:center}
+.vbtn{flex:1;min-width:0;border-radius:14px;border:2px solid;background:#fff;padding:10px 10px 9px;text-align:left;display:grid;grid-template-columns:1fr auto;gap:0 6px;align-items:center}
 .vbtn.v1{border-color:var(--v1);color:var(--v1)} .vbtn.v2{border-color:var(--v2);color:var(--v2)}
 .vbtn.v1.on{background:var(--v1);color:#fff} .vbtn.v2.on{background:var(--v2);color:#fff}
 .vbtn b{font-size:18px;letter-spacing:.04em}
@@ -431,9 +428,8 @@ function view(){
   if(!myProfile() || S.editName) return head()+demo+nameView();
   markSeen();
   let body = S.tab==="now" ? nowView() : S.tab==="sched" ? schedView() : staffView();
-  const nUnread=[1,2].map(currentFor).filter(Boolean).reduce((n,p)=>n+unreadOf(p.id),0);
   return head(true)+demo+sim+mineBanner()+`<main>${S.loadErr?`<div class="err">${esc(S.loadErr)}</div>`:""}${body}</main>`+
-    `<nav>${[["now","いまの会場"],["sched","日程・担当"],["staff","スタッフ"]].map(([k,l])=>`<button class="${S.tab===k?"on":""}" data-act="tab" data-v="${k}">${l}${k==="now"&&nUnread?`<i class="badge" aria-label="未読コメント${nUnread}件">${nUnread}</i>`:""}</button>`).join("")}</nav>`;
+    `<nav>${[["now","いまの会場"],["sched","日程・担当"],["staff","スタッフ"]].map(([k,l])=>`<button class="${S.tab===k?"on":""}" data-act="tab" data-v="${k}">${l}</button>`).join("")}</nav>`;
 }
 
 function head(full){
@@ -559,8 +555,8 @@ function selVenue(){
 }
 function nowView(){
   const sel=selVenue();
-  const btns=[1,2].map(v=>{ const p=currentFor(v), n=p?unreadOf(p.id):0;
-    return `<button class="vbtn v${v} ${sel===v?"on":""}" data-act="venue" data-v="${v}">${n?`<i class="badge" aria-label="未読コメント${n}件">${n}</i>`:""}<b>${VENUES[v].name}</b><span>${p?insOf(p.id).length:0}<small>人</small></span><small>${p?esc(p.s+"～ "+p.title):"全日程終了"}</small></button>`; }).join("");
+  const btns=[1,2].map(v=>{ const p=currentFor(v);
+    return `<button class="vbtn v${v} ${sel===v?"on":""}" data-act="venue" data-v="${v}"><b>${VENUES[v].name}</b><span>${p?insOf(p.id).length:0}<small>人</small></span><small>${p?esc(p.s+"～ "+p.title):"全日程終了"}</small></button>`; }).join("");
   return `<div class="vsel">${btns}</div>`+(sel?venueCard(sel):`<p class="empty" style="text-align:center;margin-top:28px">会場のボタンを押すと、その会場の<br>プログラム・担当者・在室者・コメントが表示されます。</p>`);
 }
 
