@@ -23,6 +23,12 @@ header h1{font-size:15px;margin:0;font-weight:700;letter-spacing:.04em;flex:1}
 header .clock{font-variant-numeric:tabular-nums;font-size:13px;opacity:.85}
 header .me{background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:99px;padding:5px 12px;font-size:13px;max-width:40%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .banner{background:#fff4cf;color:#6b5200;font-size:12px;padding:6px 16px;border-bottom:1px solid #ecdca0}
+.banner.test{background:#1f5fae;color:#fff;font-size:14px;font-weight:700;padding:9px 16px;border-bottom:0;line-height:1.45}
+.banner.test small{display:block;font-size:12px;font-weight:600;opacity:.92}
+.tbox{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px}
+.tbox .st{font-weight:800;font-size:14px}
+.tbox .st.on{color:#1f5fae}
+.tbox .sm{margin:8px 6px 0 0;padding:9px 12px;font-size:13px}
 main{flex:1;padding:14px 14px 96px}
 nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:5}
 nav button{flex:1;background:none;border:0;padding:12px 0 10px;font-size:12px;color:var(--sub);font-weight:600;border-top:3px solid transparent}
@@ -250,7 +256,16 @@ const PROG = Object.fromEntries(PROGRAMS.map(p=>[p.id,p]));
 /* ---------- 時刻（日本時間固定）。?now=2026-11-20T08:25 で動作確認用に時刻を指定できます ---------- */
 const qNow = new URLSearchParams(location.search).get("now");
 const OFFSET = qNow && !isNaN(new Date(qNow+":00+09:00")) ? new Date(qNow+":00+09:00").getTime()-Date.now() : 0;
-const now = ()=>Date.now()+OFFSET;
+/* テストモード：管理者が設定すると、全端末が同じ「学会当日の時刻」で動く（設定は DB の settings.test）。
+   学会当日（11/20 0:00）以降は設定が残っていても無効。?now= を付けた端末はそちらを優先 */
+const REAL_START = new Date(`${DAYS[0].date}T00:00:00+09:00`).getTime();
+function testInfo(){
+  if(OFFSET || Date.now()>=REAL_START) return null;
+  const s=(S.settings||[]).find(x=>x.key==="test"), v=s&&s.value;
+  return v&&v.on&&v.sim&&v.real ? v : null;
+}
+const now = ()=>{ if(OFFSET) return Date.now()+OFFSET; const t=testInfo(); return t ? t.sim+(Date.now()-t.real) : Date.now(); };
+const hm = iso=>{ const t=new Date(iso).getTime(), x=testInfo(); return jstHM(x ? t+x.sim-x.real : t); };   // 入室・コメントの時刻（テスト中は表示上の時刻に合わせる）
 const jst = t=>new Date(t+9*3600e3).toISOString();           // JSTの壁時計をISO文字列で
 const jstDate = t=>jst(t).slice(0,10);
 const jstHM = t=>jst(t).slice(11,16);
@@ -262,8 +277,9 @@ function overlapping(p){ return PROGRAMS.filter(q=>q.id!==p.id && q.start<p.end 
 /* ============================================================
    バックエンド（Supabase／デモ）
    ============================================================ */
+const DB_SCHEMA = "staff_checkin";   // 共有 Supabase プロジェクト内のこのシステム専用スキーマ
 function supaBackend(cfg){
-  const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+  const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {db:{schema:DB_SCHEMA}});
   let user = null;
   const chk = r=>{ if(r.error) throw r.error; return r.data; };
   return {
@@ -278,21 +294,25 @@ function supaBackend(cfg){
     },
     user:()=>user ? {id:user.id, email:(user.email||"").toLowerCase()} : null,
     async sendLink(email){
+      // 名簿にないアドレスにはメールを送らない（共有プロジェクトのメール送信枠を守るため）
+      if(!chk(await sb.rpc("can_login",{p_email:email}))) throw new Error("NOT_MEMBER");
       chk(await sb.auth.signInWithOtp({email, options:{emailRedirectTo:location.origin+location.pathname}}));
     },
     async verifyCode(email, token){ chk(await sb.auth.verifyOtp({email, token, type:"email"})); },
     async signOut(){ await sb.auth.signOut(); },
     async loadAll(curIds){
-      const [m,p,a,c,k] = await Promise.all([
+      const [m,p,a,c,k,s] = await Promise.all([
         sb.from("members").select("email,is_admin"),
         sb.from("profiles").select("id,email,name"),
         sb.from("assignments").select("program_id,email"),
         sb.from("checkins").select("program_id,user_id,venue,created_at"),
-        curIds.length ? sb.from("comments").select("id,program_id,user_id,body,created_at").in("program_id",curIds).order("created_at") : {data:[]},
+        curIds.length ? sb.from("comments").select("id,program_id,user_id,body,created_at").in("program_id",curIds).order("created_at").order("id") : {data:[]},
+        sb.from("settings").select("key,value"),
       ]);
-      // comments テーブル未作成（旧SQLのまま）の場合はコメントなしとして続行
-      return {members:chk(m), profiles:chk(p), assignments:chk(a), checkins:chk(c), comments:k.error?[]:k.data};
+      return {members:chk(m), profiles:chk(p), assignments:chk(a), checkins:chk(c), comments:chk(k), settings:chk(s)};
     },
+    async setTest(value){ chk(await sb.from("settings").upsert({key:"test", value, updated_at:new Date().toISOString()})); },
+    async clearTest(){ chk(await sb.rpc("clear_test_data")); },
     async saveName(name){ chk(await sb.from("profiles").upsert({id:user.id, email:user.email.toLowerCase(), name})); },
     async checkIn(pid, venue, removeIds){
       if(removeIds.length) chk(await sb.from("checkins").delete().eq("user_id",user.id).in("program_id",removeIds));
@@ -308,7 +328,7 @@ function supaBackend(cfg){
     async addAssignment(pid, email){ chk(await sb.from("assignments").insert({program_id:pid, email})); },
     async removeAssignment(pid, email){ chk(await sb.from("assignments").delete().eq("program_id",pid).eq("email",email)); },
     subscribe(cb){
-      sb.channel("board").on("postgres_changes",{event:"*",schema:"public"},()=>cb()).subscribe();
+      sb.channel("board").on("postgres_changes",{event:"*",schema:DB_SCHEMA},()=>cb()).subscribe();
     },
   };
 }
@@ -325,6 +345,7 @@ function demoBackend(){
   let db; try{ db=JSON.parse(localStorage.getItem(KEY)); }catch(e){}
   if(!db) db=seed();
   if(!db.comments) db.comments=[];
+  if(!db.settings) db.settings=[{key:"test",value:{on:false}}];
   const save=()=>{ try{ localStorage.setItem(KEY,JSON.stringify(db)); }catch(e){} };
   let onAuth=()=>{};
   return {
@@ -338,7 +359,15 @@ function demoBackend(){
     },
     async verifyCode(){},
     async signOut(){ db.user=null; save(); setTimeout(onAuth,0); },
-    async loadAll(curIds){ return JSON.parse(JSON.stringify({members:db.members,profiles:db.profiles,assignments:db.assignments,checkins:db.checkins,comments:db.comments.filter(c=>curIds.includes(c.program_id))})); },
+    async loadAll(curIds){ return JSON.parse(JSON.stringify({members:db.members,profiles:db.profiles,assignments:db.assignments,checkins:db.checkins,comments:db.comments.filter(c=>curIds.includes(c.program_id)),settings:db.settings})); },
+    async setTest(value){
+      if(Date.now()>=REAL_START) throw new Error("学会当日以降はテストモードを変更できません");
+      db.settings=[{key:"test",value}]; save();
+    },
+    async clearTest(){
+      if(Date.now()>=REAL_START) throw new Error("学会当日以降はテストデータを消去できません");
+      db.checkins=[]; db.comments=[]; db.settings=[{key:"test",value:{on:false}}]; save();
+    },
     async addComment(pid,body){ db.comments.push({id:"c"+Date.now()+Math.random(),program_id:pid,user_id:db.user.id,body,created_at:new Date().toISOString()}); save(); },
     async delComment(id){ db.comments=db.comments.filter(c=>c.id!==id); save(); },
     demoComment(pid,uid,body){ db.comments.push({id:"c"+Date.now()+Math.random(),program_id:pid,user_id:uid,body,created_at:new Date().toISOString()}); save(); },
@@ -369,7 +398,7 @@ function demoBackend(){
    ============================================================ */
 const S = {
   ready:false, tab:"now", day:null, schedAll:false, venue:null, zoom:1, open:null, sent:null, err:null, busy:false, editName:false,
-  members:[], profiles:[], assignments:[], checkins:[], comments:[], cOpen:{}, dirty:false,
+  members:[], profiles:[], assignments:[], checkins:[], comments:[], settings:[], cOpen:{}, dirty:false,
 };
 let api;
 try{ const z=parseFloat(localStorage.getItem("staff-board-zoom")); if(z) S.zoom=Math.min(2.5,Math.max(0.5,z)); }catch(e){}
@@ -388,6 +417,7 @@ const insOf = pid=>S.checkins.filter(c=>c.program_id===pid).sort((a,b)=>a.create
 function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast.h); toast.h=setTimeout(()=>t.classList.remove("show"),2600); }
 function jaErr(e){
   const m=(e&&e.message)||String(e);
+  if(m==="NOT_MEMBER") return "このメールアドレスはスタッフ名簿に登録されていません。管理者に登録を依頼するか、アドレスに間違いがないか確認してください。";
   if(/rate limit|only request this/i.test(m)) return "メール送信の回数制限に達しました。少し待ってからやり直してください。";
   if(/not authorized/i.test(m)) return "このアドレスにはメールを送信できません（SupabaseのSMTP設定を確認してください）。";
   if(/expired|invalid/i.test(m)) return "リンクまたはコードが無効か、期限切れです。もう一度送信してください。";
@@ -428,7 +458,9 @@ function view(){
   if(!myProfile() || S.editName) return head()+demo+nameView();
   markSeen();
   let body = S.tab==="now" ? nowView() : S.tab==="sched" ? schedView() : staffView();
-  return head(true)+demo+sim+mineBanner()+`<main>${S.loadErr?`<div class="err">${esc(S.loadErr)}</div>`:""}${body}</main>`+
+  const ti=testInfo(), t=now();
+  const test = ti ? `<div class="banner test">テスト期間中：${DAYS.find(d=>d.date===jstDate(t))?.label||jstDate(t)} ${+jstHM(t).slice(0,2)}:${jstHM(t).slice(3)} として動いています<small>入室・コメントはテスト用です（本番前に管理者が消去します）</small></div>` : "";
+  return head(true)+demo+sim+test+mineBanner()+`<main>${S.loadErr?`<div class="err">${esc(S.loadErr)}</div>`:""}${body}</main>`+
     `<nav>${[["now","いまの会場"],["sched","日程・担当"],["staff","スタッフ"]].map(([k,l])=>`<button class="${S.tab===k?"on":""}" data-act="tab" data-v="${k}">${l}</button>`).join("")}</nav>`;
 }
 
@@ -492,14 +524,14 @@ function venueCard(v){
   const late = today && duty.length && !dutyIn && p.start-now()<=5*60000;
   const people = ins.length ? `<div class="people">${ins.map(c=>{
       const pr=profById(c.user_id); const d=pr&&duty.includes(pr.email);
-      return `<span class="pill ${d?"duty-p":""} ${c.user_id===u.id?"me-p":""}">${esc(pr?pr.name:"（不明）")}${d?`<small>${ROLE}</small>`:""}<small>${jstHM(new Date(c.created_at).getTime())}</small></span>`;
+      return `<span class="pill ${d?"duty-p":""} ${c.user_id===u.id?"me-p":""}">${esc(pr?pr.name:"（不明）")}${d?`<small>${ROLE}</small>`:""}<small>${hm(c.created_at)}</small></span>`;
     }).join("")}</div>${dutyIn?`<div class="legend"><i></i>紫色＝担当の${ROLE}</div>`:""}` : `<p class="empty">まだ誰も入室していません。</p>`;
   const nx=nextAfter(p);
   const amDuty=duty.includes(u.email);
   const cms=S.comments.filter(c=>c.program_id===p.id), cOpen=!!S.cOpen[v], admin=isAdmin();
   const unread=unreadOf(p.id);
   const cHtml=`<button class="cbar" data-act="ctoggle" data-v="${v}">💬 この会場のコメント${cms.length?`（${cms.length}件）`:""}${unread?`<i class="badge" aria-label="未読${unread}件">${unread}</i>`:""}<span>${cOpen?"閉じる ▲":"開く ▼"}</span></button>`+(cOpen?`<div class="cpanel">
-      ${cms.length?cms.map(c=>{const pr=profById(c.user_id);return `<div class="cm"><div class="cm-h"><b>${esc(pr?pr.name:"（不明）")}</b><span>${jstHM(new Date(c.created_at).getTime())}</span>${c.user_id===u.id||admin?`<button class="x" data-act="cdel" data-id="${esc(c.id)}" aria-label="コメントを削除">×</button>`:""}</div><div class="cm-b">${esc(c.body)}</div></div>`;}).join(""):`<p class="empty" style="margin:0 0 8px">このプログラムへのコメントはまだありません。</p>`}
+      ${cms.length?cms.map(c=>{const pr=profById(c.user_id);return `<div class="cm"><div class="cm-h"><b>${esc(pr?pr.name:"（不明）")}</b><span>${hm(c.created_at)}</span>${c.user_id===u.id||admin?`<button class="x" data-act="cdel" data-id="${esc(c.id)}" aria-label="コメントを削除">×</button>`:""}</div><div class="cm-b">${esc(c.body)}</div></div>`;}).join(""):`<p class="empty" style="margin:0 0 8px">このプログラムへのコメントはまだありません。</p>`}
       <div class="inline" style="margin-top:0"><input id="cm-${v}" maxlength="200" enterkeyhint="send" placeholder="${V.name}へのコメントを入力"><button data-act="csend" data-v="${v}" data-p="${p.id}">送信</button></div>
       <div class="legend">入室していなくても読み書きできます。このプログラムが終わるとコメントは消えます。</div></div>`:"");
   return `<section class="card v${v}">
@@ -648,13 +680,24 @@ function progSheet(p, admin){
     const cand=S.members.filter(m=>!duty.includes(m.email));
     h+=`<div class="inline"><select id="as-${p.id}"><option value="">担当者を選択…</option>${cand.map(m=>`<option value="${esc(m.email)}">${esc(nameOfEmail(m.email))}</option>`).join("")}</select><button data-act="assign" data-p="${p.id}">追加</button></div>`;
   }
-  h+=`<div class="l">入室した人（${ins.length}人）</div><div class="people" style="margin-top:0">${ins.length?ins.map(c=>{const pr=profById(c.user_id);const d=pr&&duty.includes(pr.email);return `<span class="pill ${d?"duty-p":""}">${esc(pr?pr.name:"（不明）")}<small>${jstHM(new Date(c.created_at).getTime())}</small>${admin?`<button class="x" data-act="kick" data-p="${p.id}" data-u="${esc(c.user_id)}" aria-label="入室を取り消す">×</button>`:""}</span>`;}).join(""):`<span class="empty" style="margin:0">なし</span>`}</div></div></div>`;
+  h+=`<div class="l">入室した人（${ins.length}人）</div><div class="people" style="margin-top:0">${ins.length?ins.map(c=>{const pr=profById(c.user_id);const d=pr&&duty.includes(pr.email);return `<span class="pill ${d?"duty-p":""}">${esc(pr?pr.name:"（不明）")}<small>${hm(c.created_at)}</small>${admin?`<button class="x" data-act="kick" data-p="${p.id}" data-u="${esc(c.user_id)}" aria-label="入室を取り消す">×</button>`:""}</span>`;}).join(""):`<span class="empty" style="margin:0">なし</span>`}</div></div></div>`;
   return h;
 }
 function whereIs(profile){
   if(!profile) return [0,"未ログイン",false];
   for(const v of [1,2]){ const p=currentFor(v); if(p && S.checkins.some(c=>c.program_id===p.id&&c.user_id===profile.id)) return [v,VENUES[v].name,dutyOf(p.id).includes(profile.email)]; }
   return [0,"",false];
+}
+/* 管理者用：テストモードの操作欄（学会当日より前だけ表示） */
+function testPanel(){
+  const ti=testInfo(), t=now();
+  return `<h2>テストモード（管理者）</h2><div class="tbox">
+    <div class="st ${ti?"on":""}">${ti?`テスト中：全員の画面が ${DAYS.find(d=>d.date===jstDate(t))?.label||""} ${jstHM(t)} として動いています`:"停止中（通常の表示）"}</div>
+    <p class="note" style="margin:4px 0 0">開始すると、全員の画面が指定した学会当日の時刻から動き出し、入室・コメントが本番と同じように使えます。</p>
+    <div class="inline"><select id="tday">${DAYS.map((d,i)=>`<option value="${i+1}">${d.n} ${d.label}</option>`).join("")}</select><input id="ttime" type="time" value="08:20" step="300"></div>
+    <button class="btn plain" data-act="teststart" style="margin-top:10px;padding:12px;font-size:15px;letter-spacing:0">${ti?"この時刻に設定し直す":"この時刻からテストを開始"}</button>
+    ${ti?`<button class="sm" data-act="teststop">テストを停止（記録は残す）</button>`:""}<button class="sm danger" data-act="testclear">テストの記録を消去</button>
+    <p class="note" style="margin:8px 0 0">「テストの記録を消去」は、入室記録とコメントをすべて消してテストを停止します（名簿・氏名・担当は残ります）。学会前日までに必ず実行してください。11/20 0:00 以降はテストモードは自動で無効になり、消去もできません。</p></div>`;
 }
 function staffView(){
   const admin=isAdmin(), u=me();
@@ -665,6 +708,7 @@ function staffView(){
   if(admin){
     h+=`<h2>スタッフ候補者を登録（管理者）</h2><div class="inline" style="margin:0 0 6px"><input id="newmail" type="email" inputmode="email" autocapitalize="off" placeholder="追加するメールアドレス"><button data-act="addmember">登録</button></div><p class="note" style="margin:0 0 6px">登録した方に、このページのURLをお知らせください。本人がログインして氏名を入力すると名前が表示されます。</p>`;
   }
+  if(admin && Date.now()<REAL_START && !OFFSET) h+=testPanel();
   h+=`<h2>スタッフ候補者（${rows.length}人）</h2><div class="legend" style="margin:-2px 2px 10px"><i></i>紫色＝いまのプログラムの担当${ROLE}として入室中</div>`;
   for(const r of rows){
     const self=r.m.email===u.email;
@@ -751,6 +795,18 @@ $app.addEventListener("click", async ev=>{
     return act(()=>api.addMember(v), "登録しました");
   }
   if(a==="delmember"){ if(confirm(em+" を名簿から削除しますか？（担当割当・入室記録も消えます）")) return act(()=>api.removeMember(em)); return; }
+  if(a==="teststart"){
+    const d=+document.getElementById("tday").value, tm=document.getElementById("ttime").value;
+    if(!/^\d{2}:\d{2}$/.test(tm)) return toast("時刻を入力してください");
+    const sim=new Date(`${DAYS[d-1].date}T${tm}:00+09:00`).getTime();
+    return act(()=>api.setTest({on:true, sim, real:Date.now()}), `テストを開始しました（${DAYS[d-1].label} ${tm}）`);
+  }
+  if(a==="teststop") return act(()=>api.setTest({on:false}), "テストを停止しました（記録は残っています）");
+  if(a==="testclear"){
+    if(confirm("テスト期間の入室記録とコメントをすべて消去し、テストを停止します。よろしいですか？（名簿・氏名・担当は残ります）"))
+      return act(()=>api.clearTest(), "テストの記録を消去しました");
+    return;
+  }
   if(a==="toggleadmin"){ const m=S.members.find(x=>x.email===em); return act(()=>api.setAdmin(em,!m.is_admin)); }
 });
 $app.addEventListener("keydown", ev=>{
@@ -777,7 +833,7 @@ $app.addEventListener("focusout", ()=>setTimeout(()=>{ if(S.dirty) render(); },5
   const configured = cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY;
   if(configured){
     try{
-      await new Promise((ok,ng)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"; s.onload=ok; s.onerror=()=>ng(new Error("Failed to fetch")); document.head.appendChild(s); });
+      await new Promise((ok,ng)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"; s.onload=ok; s.onerror=()=>ng(new Error("Failed to fetch")); document.head.appendChild(s); });
       api=supaBackend(cfg);
     }catch(e){ $app.innerHTML=`<main><div class="err">${esc(jaErr(e))}</div><button class="btn plain" onclick="location.reload()">再読み込み</button></main>`; return; }
   }else api=demoBackend();
