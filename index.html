@@ -568,8 +568,9 @@ function schedView(){
   const min=x=>(x-base)/60000;
   const m0=Math.floor(Math.min(...all.map(p=>min(p.start)))/60)*60-30, m1=Math.ceil(Math.max(...all.map(p=>min(p.end)))/30)*30+30;
   const Y=m=>Math.round((m-m0)*PXM);
+  const showAll=admin&&S.schedAll;   // 「すべてのプログラム」は管理者だけ。スタッフは担当を割り振ったプログラムのみ
   let h=`<div class="days">${DAYS.map((d,i)=>`<button class="${day===i+1?"on":""}" data-act="day" data-v="${i+1}">${d.n}<br>${d.label}</button>`).join("")}</div>
-    <div class="seg"><button class="${S.schedAll?"":"on"}" data-act="schedall" data-v="0">担当を割り振ったプログラム</button><button class="${S.schedAll?"on":""}" data-act="schedall" data-v="1">すべてのプログラム</button></div>
+    ${admin?`<div class="seg"><button class="${S.schedAll?"":"on"}" data-act="schedall" data-v="0">担当を割り振ったプログラム</button><button class="${S.schedAll?"on":""}" data-act="schedall" data-v="1">すべてのプログラム</button></div>`:""}
     ${admin&&!S.schedAll?`<p class="note" style="margin:0 2px">担当を新しく割り振るときは「すべてのプログラム」に切り替え、プログラムを押してください。</p>`:""}`;
   let lines="";
   for(let m=m0;m<=m1;m+=30){
@@ -578,7 +579,7 @@ function schedView(){
   }
   const col=v=>{
     const vp=all.filter(p=>p.venue===v);
-    return vp.filter(p=>S.schedAll||dutyOf(p.id).length).map(p=>{
+    return vp.filter(p=>showAll||dutyOf(p.id).length).map(p=>{
       const duty=dutyOf(p.id), n=insOf(p.id).length, dur=min(p.end)-min(p.start), short=dur<20;
       const hgt=Math.max(Y(min(p.end))-Y(min(p.start)),26)+1;
       const adj=vp.some(q=>q.start===p.end);                       // 直後に別プログラムが続く短い枠は上方向に広げる

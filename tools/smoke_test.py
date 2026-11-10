@@ -76,6 +76,15 @@ async def main():
         check("管理者は担当を追加できる", "高橋 美咲" in " ".join(await pg.locator(".sheet .duty-p").all_inner_texts()))
         await pg.mouse.click(195, 60); await pg.wait_for_timeout(200)
         check("詳細シートを閉じられる", await pg.locator(".sheet").count() == 0)
+        check("管理者には表示切替がある", await pg.locator("[data-act=schedall]").count() == 2)
+        # スタッフ（管理者でない人）の見え方：切替ボタンなし・担当を割り振ったプログラムのみ
+        await pg.evaluate("""(async()=>{for(const e of dutyOf('d1v2-0830')) await api.removeAssignment('d1v2-0830',e);
+            await api.setAdmin('me@example.com',false);await refresh()})()""")
+        await pg.wait_for_timeout(200)
+        check("スタッフには表示切替を出さない", await pg.locator("[data-act=schedall]").count() == 0)
+        check("スタッフには担当のないプログラムを出さない", "シンポジウム2" not in await pg.locator(".tt").inner_text())
+        await pg.evaluate("(async()=>{await api.setAdmin('me@example.com',true);await refresh()})()")
+        await pg.wait_for_timeout(200)
 
         await pg.click("[data-v=staff]"); await pg.wait_for_timeout(200)
         check("スタッフ一覧に「会場外」を出さない", "会場外" not in await pg.locator("main").inner_text())
