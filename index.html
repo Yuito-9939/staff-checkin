@@ -407,9 +407,10 @@ function render(force){
   const ae=document.activeElement;
   if(!force && ae && $app.contains(ae) && /^(INPUT|SELECT)$/.test(ae.tagName)){ S.dirty=true; return; }
   S.dirty=false;
-  const y=window.scrollY;
+  const y=window.scrollY, tw=$app.querySelector(".tt-wrap"), sl=tw?tw.scrollLeft:0;
   $app.innerHTML = view();
   fitZoom();
+  const tw2=$app.querySelector(".tt-wrap"); if(tw2) tw2.scrollLeft=sl;   // 拡大中の横位置を自動更新で失わない
   window.scrollTo(0,y);
 }
 
@@ -554,12 +555,26 @@ function fitZoom(){ const el=$app.querySelector(".tt"); if(!el) return;
   el.parentNode.style.height=Math.ceil(el.offsetHeight*S.zoom)+"px";
   el.parentNode.style.overflowX=S.zoom<=1?"hidden":"auto";   // 縮小時は余白へ横スクロールさせない
 }
-function setZoom(z, live){
+/* 拡大縮小の中心：画面上の点(sx,sy)にある日程表の位置（等倍での座標）を求め、拡縮後も同じ画面位置に来るようスクロールする */
+function zoomAnchor(sx, sy){ const el=$app.querySelector(".tt"); if(!el) return null;
+  const r=el.getBoundingClientRect(); return {cx:(sx-r.left)/S.zoom, cy:(sy-r.top)/S.zoom, sx, sy};
+}
+function placeAnchor(a){ const w=$app.querySelector(".tt-wrap"); if(!w||!a) return;
+  const wr=w.getBoundingClientRect();
+  w.scrollLeft=a.cx*S.zoom-(a.sx-wr.left);
+  window.scrollTo(0, wr.top+window.scrollY+a.cy*S.zoom-a.sy);
+}
+function viewCenterAnchor(){ const w=$app.querySelector(".tt-wrap"); if(!w) return null;   // ボタン操作時は見えている部分の中央
+  const r=w.getBoundingClientRect(), top=Math.max(r.top,0), bot=Math.min(r.bottom,window.innerHeight);
+  return zoomAnchor(r.left+r.width/2, bot>top?(top+bot)/2:r.top);
+}
+function saveZoom(){ try{ localStorage.setItem("staff-board-zoom",String(S.zoom)); }catch(e){} }
+function setZoom(z, live, anchor){
   S.zoom=clampZoom(z);
   if(live){ const el=$app.querySelector(".tt"), pc=$app.querySelector(".zoom .pct");
-    if(el){ el.style.cssText=ttStyle(S.zoom); fitZoom(); } if(pc) pc.textContent=Math.round(S.zoom*100)+"%"; return; }
-  try{ localStorage.setItem("staff-board-zoom",String(S.zoom)); }catch(e){}
-  render(true);
+    if(el){ el.style.cssText=ttStyle(S.zoom); fitZoom(); placeAnchor(anchor); } if(pc) pc.textContent=Math.round(S.zoom*100)+"%"; return; }
+  saveZoom();
+  render(true); placeAnchor(anchor);
 }
 function schedView(){
   const day=schedDay(), t=now(), admin=isAdmin(), u=me(), D=DAYS[day-1];
@@ -652,9 +667,9 @@ $app.addEventListener("click", async ev=>{
   if(a==="tab"){ S.tab=b.dataset.v; window.scrollTo(0,0); return render(true); }
   if(a==="day"){ S.day=+b.dataset.v; S.open=null; return render(true); }
   if(a==="zoom"){
-    const d=+b.dataset.v; if(!d) return setZoom(1);
+    const d=+b.dataset.v, a=viewCenterAnchor(); if(!d) return setZoom(1,false,a);
     const next=d>0 ? ZOOMS.find(x=>x>S.zoom+0.01) : [...ZOOMS].reverse().find(x=>x<S.zoom-0.01);
-    return setZoom(next||S.zoom);
+    return setZoom(next||S.zoom,false,a);
   }
   if(a==="venue"){ S.venue=+b.dataset.v; return render(true); }
   if(a==="sheetbg"){ if(ev.target!==b) return; S.open=null; return render(true); }
@@ -725,12 +740,14 @@ $app.addEventListener("keydown", ev=>{
   const map={email:"send",code:"verify",name:"savename",newmail:"addmember"}; const a=map[ev.target.id];
   if(a){ ev.preventDefault(); const btn=$app.querySelector(`[data-act="${a}"]`); if(btn) btn.click(); }
 });
-/* 日程表のピンチ操作（2本指）による拡大縮小 */
+/* 日程表のピンチ操作（2本指）による拡大縮小。指を置いた位置を中心に拡縮し、2本指のまま動かすと表も一緒に動く */
 let pinch=null;
 const tdist=t=>Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
-$app.addEventListener("touchstart", ev=>{ if(ev.touches.length===2 && ev.target.closest(".tt-wrap")) pinch={d:tdist(ev.touches), z:S.zoom}; }, {passive:true});
-$app.addEventListener("touchmove", ev=>{ if(!pinch||ev.touches.length!==2) return; ev.preventDefault(); setZoom(pinch.z*tdist(ev.touches)/pinch.d, true); }, {passive:false});
-$app.addEventListener("touchend", ()=>{ if(pinch){ pinch=null; setZoom(Math.round(S.zoom*20)/20); } });
+const tmid=t=>[(t[0].clientX+t[1].clientX)/2, (t[0].clientY+t[1].clientY)/2];
+$app.addEventListener("touchstart", ev=>{ if(ev.touches.length===2 && ev.target.closest(".tt-wrap")){ const [x,y]=tmid(ev.touches); pinch={d:tdist(ev.touches), z:S.zoom, a:zoomAnchor(x,y)}; } }, {passive:true});
+$app.addEventListener("touchmove", ev=>{ if(!pinch||ev.touches.length!==2) return; ev.preventDefault();
+  const [x,y]=tmid(ev.touches); setZoom(pinch.z*tdist(ev.touches)/pinch.d, true, pinch.a&&{...pinch.a, sx:x, sy:y}); }, {passive:false});
+$app.addEventListener("touchend", ()=>{ if(pinch){ pinch=null; saveZoom(); } });   // 指を離した位置のまま確定（再描画しないので表示が跳ばない）
 $app.addEventListener("gesturestart", ev=>{ if(ev.target.closest && ev.target.closest(".tt-wrap")) ev.preventDefault(); });
 $app.addEventListener("focusout", ()=>setTimeout(()=>{ if(S.dirty) render(); },50));
 

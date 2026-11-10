@@ -70,6 +70,30 @@ async def main():
         await pg.screenshot(path=str(SHOTS / "sched_zoom_out.png"))
         await pg.click(".zoom .pct"); await pg.wait_for_timeout(100)
         check("100%に戻せる", await pg.locator(".zoom .pct").inner_text() == "100%")
+        # 2本指ピンチ：指を置いた位置の内容が、拡大後も指の下に残る
+        cdp = await pg.context.new_cdp_session(pg)
+        await cdp.send("Emulation.setTouchEmulationEnabled", {"enabled": True})
+        fx, fy = 300, 600
+        before = await pg.evaluate(f"zoomAnchor({fx},{fy})")
+        async def touch(kind, d):
+            pts = [] if kind == "touchEnd" else [{"x": fx-d, "y": fy, "id": 1}, {"x": fx+d, "y": fy, "id": 2}]
+            await cdp.send("Input.dispatchTouchEvent", {"type": kind, "touchPoints": pts})
+        await touch("touchStart", 30)
+        for d in (40, 50, 60): await touch("touchMove", d)
+        await touch("touchEnd", 0); await pg.wait_for_timeout(100)
+        after = await pg.evaluate(f"zoomAnchor({fx},{fy})")
+        check("ピンチで拡大できる（200%）", await pg.locator(".zoom .pct").inner_text() == "200%")
+        check("ピンチは指を置いた位置を中心に拡大", abs(before["cx"]-after["cx"]) < 2 and abs(before["cy"]-after["cy"]) < 2)
+        await pg.screenshot(path=str(SHOTS / "sched_pinch.png"))
+        sl = await pg.evaluate("document.querySelector('.tt-wrap').scrollLeft")
+        await pg.evaluate("render()")
+        check("自動更新で拡大中の横位置が戻らない", sl > 0 and await pg.evaluate("document.querySelector('.tt-wrap').scrollLeft") == sl)
+        before = await pg.evaluate("viewCenterAnchor()")
+        await pg.evaluate("document.querySelector(\"[data-act=zoom][data-v='-1']\").click()"); await pg.wait_for_timeout(100)   # 画面をスクロールさせずに押す
+        after = await pg.evaluate(f"zoomAnchor({before['sx']},{before['sy']})")
+        if not (abs(before["cx"]-after["cx"]) < 2 and abs(before["cy"]-after["cy"]) < 2): print(before, after)
+        check("－ボタンは見えている部分の中央を中心に縮小", abs(before["cx"]-after["cx"]) < 2 and abs(before["cy"]-after["cy"]) < 2)
+        await pg.click(".zoom .pct"); await pg.wait_for_timeout(100)
         await pg.screenshot(path=str(SHOTS / "sched.png"), full_page=True)
         await pg.click(".blk.live >> nth=0"); await pg.wait_for_selector(".sheet")
         await pg.select_option(".sheet select", "staff3@example.com"); await pg.click("[data-act=assign]"); await pg.wait_for_timeout(300)
