@@ -124,7 +124,13 @@ h2.c1{color:var(--v1)} h2.c2{color:var(--v2)}
 .cm-h .x{margin-left:auto;font-size:14px}
 .cm-b{font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:2px}
 .vsel{display:flex;gap:10px;margin-bottom:14px}
-.vbtn{flex:1;min-width:0;border-radius:14px;border:2px solid;background:#fff;padding:10px 10px 9px;text-align:left;display:grid;grid-template-columns:1fr auto;gap:0 6px;align-items:center}
+/* 未読コメント数のバッジ（LINE風の赤丸） */
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:99px;background:#e0301e;color:#fff;font-size:12.5px;font-weight:800;line-height:1;font-style:normal;font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px #fff}
+.vbtn .badge{position:absolute;top:-9px;right:-7px}
+nav button{position:relative}
+nav .badge{position:absolute;top:4px;left:calc(50% + 30px);min-width:18px;height:18px;font-size:11px;padding:0 5px}
+.cbar .badge{box-shadow:none}
+.vbtn{position:relative;flex:1;min-width:0;border-radius:14px;border:2px solid;background:#fff;padding:10px 10px 9px;text-align:left;display:grid;grid-template-columns:1fr auto;gap:0 6px;align-items:center}
 .vbtn.v1{border-color:var(--v1);color:var(--v1)} .vbtn.v2{border-color:var(--v2);color:var(--v2)}
 .vbtn.v1.on{background:var(--v1);color:#fff} .vbtn.v2.on{background:var(--v2);color:#fff}
 .vbtn b{font-size:18px;letter-spacing:.04em}
@@ -423,9 +429,11 @@ function view(){
   if(S.loadErr && !S.members.length) return head()+`<main><div class="err">${esc(S.loadErr)}</div><button class="btn plain" data-act="reload">再読み込み</button></main>`;
   if(!myMember()) return head()+demo+`<main class="auth"><h2>未登録のアドレスです</h2><p>${esc(u.email)} はスタッフ名簿に登録されていません。管理者に登録を依頼してから、再読み込みしてください。</p><button class="btn plain" data-act="reload">再読み込み</button><button class="link" data-act="logout">別のアドレスでログインする</button></main>`;
   if(!myProfile() || S.editName) return head()+demo+nameView();
+  markSeen();
   let body = S.tab==="now" ? nowView() : S.tab==="sched" ? schedView() : staffView();
+  const nUnread=[1,2].map(currentFor).filter(Boolean).reduce((n,p)=>n+unreadOf(p.id),0);
   return head(true)+demo+sim+mineBanner()+`<main>${S.loadErr?`<div class="err">${esc(S.loadErr)}</div>`:""}${body}</main>`+
-    `<nav>${[["now","いまの会場"],["sched","日程・担当"],["staff","スタッフ"]].map(([k,l])=>`<button class="${S.tab===k?"on":""}" data-act="tab" data-v="${k}">${l}</button>`).join("")}</nav>`;
+    `<nav>${[["now","いまの会場"],["sched","日程・担当"],["staff","スタッフ"]].map(([k,l])=>`<button class="${S.tab===k?"on":""}" data-act="tab" data-v="${k}">${l}${k==="now"&&nUnread?`<i class="badge" aria-label="未読コメント${nUnread}件">${nUnread}</i>`:""}</button>`).join("")}</nav>`;
 }
 
 function head(full){
@@ -493,7 +501,8 @@ function venueCard(v){
   const nx=nextAfter(p);
   const amDuty=duty.includes(u.email);
   const cms=S.comments.filter(c=>c.program_id===p.id), cOpen=!!S.cOpen[v], admin=isAdmin();
-  const cHtml=`<button class="cbar" data-act="ctoggle" data-v="${v}">💬 この会場のコメント${cms.length?`<em>${cms.length}</em>`:""}<span>${cOpen?"閉じる ▲":"開く ▼"}</span></button>`+(cOpen?`<div class="cpanel">
+  const unread=unreadOf(p.id);
+  const cHtml=`<button class="cbar" data-act="ctoggle" data-v="${v}">💬 この会場のコメント${cms.length?`（${cms.length}件）`:""}${unread?`<i class="badge" aria-label="未読${unread}件">${unread}</i>`:""}<span>${cOpen?"閉じる ▲":"開く ▼"}</span></button>`+(cOpen?`<div class="cpanel">
       ${cms.length?cms.map(c=>{const pr=profById(c.user_id);return `<div class="cm"><div class="cm-h"><b>${esc(pr?pr.name:"（不明）")}</b><span>${jstHM(new Date(c.created_at).getTime())}</span>${c.user_id===u.id||admin?`<button class="x" data-act="cdel" data-id="${esc(c.id)}" aria-label="コメントを削除">×</button>`:""}</div><div class="cm-b">${esc(c.body)}</div></div>`;}).join(""):`<p class="empty" style="margin:0 0 8px">このプログラムへのコメントはまだありません。</p>`}
       <div class="inline" style="margin-top:0"><input id="cm-${v}" maxlength="200" enterkeyhint="send" placeholder="${V.name}へのコメントを入力"><button data-act="csend" data-v="${v}" data-p="${p.id}">送信</button></div>
       <div class="legend">入室していなくても読み書きできます。このプログラムが終わるとコメントは消えます。</div></div>`:"");
@@ -527,6 +536,21 @@ function mineBanner(){
   }
   return h;
 }
+/* 未読コメント：この端末で最後に読んだコメントの時刻をプログラムごとに記憶（端末ごとの既読。自分のコメントは数えない） */
+const CSEEN_KEY="staff-board-cseen";
+let cSeen={}; try{ cSeen=JSON.parse(localStorage.getItem(CSEEN_KEY))||{}; }catch(e){}
+function unreadOf(pid){ const s=cSeen[pid]||"", u=me();
+  return S.comments.filter(c=>c.program_id===pid && c.user_id!==u.id && c.created_at>s).length; }
+function markSeen(){   // コメント欄を開いて表示している会場のコメントを既読にする
+  if(S.tab!=="now") return;
+  const v=selVenue(); if(!v||!S.cOpen[v]) return;
+  const p=currentFor(v); if(!p) return;
+  const mx=S.comments.filter(c=>c.program_id===p.id).reduce((m,c)=>c.created_at>m?c.created_at:m, cSeen[p.id]||"");
+  if(!mx||mx===cSeen[p.id]) return;
+  const cur=new Set([1,2].map(currentFor).filter(Boolean).map(q=>q.id));
+  cSeen=Object.fromEntries(Object.entries(cSeen).filter(([k])=>cur.has(k))); cSeen[p.id]=mx;   // 終了したプログラムの記録は捨てる
+  try{ localStorage.setItem(CSEEN_KEY,JSON.stringify(cSeen)); }catch(e){}
+}
 function selVenue(){
   if(S.venue) return S.venue;
   const u=me();
@@ -535,8 +559,8 @@ function selVenue(){
 }
 function nowView(){
   const sel=selVenue();
-  const btns=[1,2].map(v=>{ const p=currentFor(v);
-    return `<button class="vbtn v${v} ${sel===v?"on":""}" data-act="venue" data-v="${v}"><b>${VENUES[v].name}</b><span>${p?insOf(p.id).length:0}<small>人</small></span><small>${p?esc(p.s+"～ "+p.title):"全日程終了"}</small></button>`; }).join("");
+  const btns=[1,2].map(v=>{ const p=currentFor(v), n=p?unreadOf(p.id):0;
+    return `<button class="vbtn v${v} ${sel===v?"on":""}" data-act="venue" data-v="${v}">${n?`<i class="badge" aria-label="未読コメント${n}件">${n}</i>`:""}<b>${VENUES[v].name}</b><span>${p?insOf(p.id).length:0}<small>人</small></span><small>${p?esc(p.s+"～ "+p.title):"全日程終了"}</small></button>`; }).join("");
   return `<div class="vsel">${btns}</div>`+(sel?venueCard(sel):`<p class="empty" style="text-align:center;margin-top:28px">会場のボタンを押すと、その会場の<br>プログラム・担当者・在室者・コメントが表示されます。</p>`);
 }
 
