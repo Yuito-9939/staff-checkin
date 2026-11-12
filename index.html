@@ -20,6 +20,8 @@ button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
 header{background:var(--head);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:5}
 header h1{font-size:15px;margin:0;font-weight:700;letter-spacing:.04em;flex:1}
+header .help{width:28px;height:28px;margin-left:8px;padding:0;border-radius:50%;border:2px solid rgba(255,255,255,.75);background:none;color:#fff;font-size:14px;font-weight:800;line-height:1;vertical-align:middle}
+header h1{display:flex;align-items:center}
 header .clock{font-variant-numeric:tabular-nums;font-size:13px;opacity:.85}
 header .me{background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:99px;padding:5px 12px;font-size:13px;max-width:40%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .banner{background:#fff4cf;color:#6b5200;font-size:12px;padding:6px 16px;border-bottom:1px solid #ecdca0}
@@ -115,6 +117,60 @@ h2.c1{color:var(--v1)} h2.c2{color:var(--v2)}
 .auth p{color:var(--sub);font-size:14px;margin:0 0 18px}
 .auth label{display:block;font-size:12px;font-weight:700;color:var(--sub);margin:14px 0 4px}
 .auth input{width:100%;border:1px solid var(--line);border-radius:12px;padding:14px;font-size:16px;background:#fff}
+.guide h2{display:flex;align-items:baseline}
+.guide h2 small{font-size:14px;color:var(--sub);font-weight:700;margin-left:6px}
+.gclose{margin-left:auto;align-self:center;width:44px;height:44px;margin-right:-8px;border:0;background:none;color:var(--sub);font-size:28px;line-height:1;padding:0}
+.gwrap{overflow:hidden;margin:0 -22px}
+.gtrack{display:flex;transition:transform .3s ease}
+.gslide{flex:0 0 100%;padding:0 22px}
+.gslide h3{font-size:19px;color:var(--ink);margin:6px 0 10px}
+.gslide ul{margin:0;padding-left:1.2em;font-size:16px;line-height:1.65;color:var(--ink)}
+.gslide li{margin:0 0 6px}
+.gslide b.gduty{color:var(--duty)}
+.gill{position:relative;background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin:0 0 14px;overflow:hidden}
+.gdots{display:flex;justify-content:center;gap:8px;margin:16px 0 10px}
+.gdots button{width:10px;height:10px;padding:0;border:0;border-radius:99px;background:#c9d1ce;transition:width .2s}
+.gdots button.on{width:26px;background:var(--head)}
+.gnav{display:flex;gap:10px}.gnav .btn{flex:1}
+.btn.sub{background:#fff;color:var(--head);border:2px solid var(--head)}
+.tap{position:absolute;width:46px;height:46px;margin:-6px 0 0 -6px;border-radius:50%;border:3px solid #e0301e;background:rgba(224,48,30,.14);animation:gtap 1.6s ease-in-out infinite;pointer-events:none}
+.tap em{position:absolute;right:-10px;top:-10px;width:22px;height:22px;border-radius:50%;background:#e0301e;color:#fff;font:800 13px/22px sans-serif;text-align:center;font-style:normal}
+@keyframes gtap{0%,100%{transform:scale(1)}50%{transform:scale(.8)}}
+.mk-vsel{display:flex;gap:8px;margin-bottom:12px}
+.mk-vbtn{flex:1;border:2px solid;border-radius:12px;padding:7px 8px;display:grid;grid-template-columns:1fr auto;align-items:center;background:#fff}
+.mk-vbtn.v1{border-color:var(--v1);color:var(--v1)}.mk-vbtn.v1.on{background:var(--v1);color:#fff}.mk-vbtn.v2{border-color:var(--v2);color:var(--v2)}
+.mk-vbtn b{font-size:14px}.mk-vbtn small{font-size:10px;grid-row:2}.mk-vbtn span{grid-row:1/3;grid-column:2;font-weight:800;font-size:15px}
+.mk-card{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.mk-card.off{opacity:.45}
+.mk-cap{color:#fff;font-weight:800;font-size:13px;padding:5px 10px}.mk-cap.v1{background:var(--v1)}
+.mk-in{padding:9px 10px}.mk-in small{display:block;font-size:11px;color:var(--sub)}.mk-in b{font-size:15px}
+.mk-pills{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.mk-pills i{font-style:normal;font-size:11px;background:var(--v1bg);color:var(--v1);border-radius:99px;padding:2px 8px;font-weight:700}.mk-pills i.d{background:var(--duty);color:#fff}
+.mk-btn{margin-top:8px;border-radius:10px;color:#fff;font-weight:800;text-align:center;padding:9px;font-size:15px;letter-spacing:.1em}.mk-btn.v1{background:var(--v1)}
+.mk-done{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;background:#eef1ef;color:var(--sub);border-radius:99px;padding:1px 8px}
+.mk-link{text-align:center;font-size:11px;color:var(--sub);text-decoration:underline;margin-top:6px}
+.mk-arrow{text-align:center;font-size:12px;font-weight:700;color:var(--head);margin:6px 0}
+.mk-mine{background:var(--duty);color:#fff;font-weight:800;font-size:13px;padding:8px 10px;border-radius:10px;margin-bottom:10px}
+.mk-cbar{display:flex;align-items:center;gap:6px;border-top:1px solid var(--line);background:#fafbfa;padding:9px 10px;font-size:12px;font-weight:700}
+.mk-cbar span{margin-left:auto;font-size:11px;color:var(--sub);font-weight:600}.mk-cbar .badge{box-shadow:none;min-width:20px;height:20px;font-size:11.5px}
+.mk-tt{position:relative;display:flex;gap:6px}
+.mk-col{flex:1;display:flex;flex-direction:column;gap:4px}
+.mk-h{font-size:11px;font-weight:800;text-align:center;color:#fff;border-radius:6px;padding:2px}.mk-h.v1{background:var(--v1)}.mk-h.v2{background:var(--v2)}
+.mk-b{font-size:10.5px;font-weight:700;border-radius:6px;padding:3px 5px;border:1px solid}
+.mk-b.v1{background:var(--v1bg);color:var(--v1);border-color:#b9ded8}.mk-b.v2{background:var(--v2bg);color:var(--v2);border-color:#efd2bb}
+.mk-b.now{border:3px solid var(--v1)}
+.mk-now{position:absolute;left:0;right:0;top:92px;border-top:2px solid #e0301e}
+.mk-zoom{display:flex;align-items:center;gap:6px}
+.mk-tt.sm{flex:0 0 40%;gap:3px}.mk-tt.sm .mk-col{gap:2px}.mk-tt.sm .mk-h{font-size:8px;padding:1px}.mk-tt.sm .mk-b{font-size:7.5px;padding:1px 3px;border-radius:4px}.mk-tt.sm .mk-b.now{border-width:2px}
+.mk-lens{position:absolute;left:-3px;top:28px;width:calc(50% + 2px);height:50px;border:2px dashed #e0301e;border-radius:6px}
+.mk-zarr{flex:none;color:#e0301e;font-size:10px;font-weight:800;text-align:center;line-height:1.2}.mk-zarr b{display:block;font-size:16px}
+.mk-zbig{flex:1;min-width:0}
+.mk-zbig .mk-b{font-size:15px;padding:8px 9px;border-radius:9px;min-height:104px}
+.mk-zbig .mk-b small{display:block;font-size:11px;font-weight:600;color:var(--sub)}
+.mk-zbig .mk-b em{display:block;font-style:normal;font-size:11.5px;color:var(--duty);margin-top:4px}
+.mk-zctl{display:flex;justify-content:center;gap:4px;margin-top:6px}.mk-zctl span{border:1px solid var(--line);border-radius:7px;font-size:11px;font-weight:800;padding:2px 8px;background:#fff}
+.mk-nav{display:flex;margin:12px -14px -14px;border-top:1px solid var(--line)}.mk-nav span{flex:1;text-align:center;font-size:11px;padding:7px 0;color:var(--sub);font-weight:600;border-top:3px solid transparent}.mk-nav span.on{color:var(--head);border-top-color:var(--head)}
+.auth label.chk{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700;color:var(--ink);margin:20px 0 0;min-height:48px}
+.auth label.chk input{width:24px;height:24px;margin:0;padding:0;flex:none}
 .note{font-size:12.5px;color:var(--sub);margin-top:14px}
 .err{background:var(--warnbg);color:var(--warn);border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;margin:12px 0}
 .okmsg{background:#e6f4ea;color:var(--ok);border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;margin:12px 0}
@@ -441,7 +497,10 @@ function render(force){
   if(!force && ae && $app.contains(ae) && /^(INPUT|SELECT)$/.test(ae.tagName)){ S.dirty=true; return; }
   S.dirty=false;
   const y=window.scrollY, tw=$app.querySelector(".tt-wrap"), sl=tw?tw.scrollLeft:0;
+  // 自動の再描画では、入力途中の文字（コメント等）を消さずに引き継ぐ。操作による再描画（force）は引き継がない
+  const keep = force ? [] : [...$app.querySelectorAll("input[id]:not([type=checkbox]),select[id]")].map(e=>[e.id,e.value]);
   $app.innerHTML = view();
+  keep.forEach(([id,val])=>{ const e=document.getElementById(id); if(e && $app.contains(e)) e.value=val; });
   fitZoom();
   const tw2=$app.querySelector(".tt-wrap"); if(tw2) tw2.scrollLeft=sl;   // 拡大中の横位置を自動更新で失わない
   window.scrollTo(0,y);
@@ -456,6 +515,7 @@ function view(){
   if(S.loadErr && !S.members.length) return head()+`<main><div class="err">${esc(S.loadErr)}</div><button class="btn plain" data-act="reload">再読み込み</button></main>`;
   if(!myMember()) return head()+demo+`<main class="auth"><h2>未登録のアドレスです</h2><p>${esc(u.email)} はスタッフ名簿に登録されていません。管理者に登録を依頼してから、再読み込みしてください。</p><button class="btn plain" data-act="reload">再読み込み</button><button class="link" data-act="logout">別のアドレスでログインする</button></main>`;
   if(!myProfile() || S.editName) return head()+demo+nameView();
+  if(S.guide || (!S.guideOk && !guideHidden())) return head()+demo+guideView();
   markSeen();
   let body = S.tab==="now" ? nowView() : S.tab==="sched" ? schedView() : staffView();
   const ti=testInfo(), t=now();
@@ -466,7 +526,7 @@ function view(){
 
 function head(full){
   const p=myProfile();
-  return `<header><h1>会場スタッフ入室ボード</h1><span class="clock">${jstHM(now())}</span>${full&&p?`<button class="me" data-act="editname">${esc(p.name)}</button>`:""}</header>`;
+  return `<header><h1>会場スタッフ入室ボード${full&&p?`<button class="help" data-act="guide" aria-label="使い方を見る">？</button>`:""}</h1><span class="clock">${jstHM(now())}</span>${full&&p?`<button class="me" data-act="editname">${esc(p.name)}</button>`:""}</header>`;
 }
 
 function loginView(){
@@ -497,6 +557,41 @@ function nameView(){
     <input id="name" maxlength="40" autocomplete="name" placeholder="例：岡山 太郎" value="${esc(p?p.name:"")}">
     <button class="btn plain" data-act="savename" ${S.busy?"disabled":""}>${p?"保存":"はじめる"}</button>
     ${p?`<button class="link" data-act="cancelname">戻る</button>　<button class="link" data-act="logout">ログアウト</button>`:`<button class="link" data-act="logout">ログアウト</button>`}</main>`;
+}
+
+/* 使い方の案内（氏名入力後・起動時に表示。「今後表示しない」は端末・アドレスごとに記憶） */
+const guideKey = ()=>"staff-board-guide-hide:"+(me()?me().email:"");
+function guideHidden(){ try{ return localStorage.getItem(guideKey())==="1"; }catch(e){ return false; } }
+const GUIDE_N=4;
+function guideView(){
+  const pg=Math.min(Math.max(S.gpage||0,0),GUIDE_N-1);
+  const tap=(x,y,n)=>`<i class="tap" style="left:${x};top:${y}">${n?`<em>${n}</em>`:""}</i>`;
+  const slides=[
+    {t:"会場を選んで「入室」",
+     ill:`<div class="mk-vsel"><div class="mk-vbtn v1 on"><b>第1会場</b><small>教育講演</small><span>3人</span></div><div class="mk-vbtn v2"><b>第2会場</b><small>一般演題</small><span>2人</span></div></div>${tap("18%","8px","1")}
+       <div class="mk-card"><div class="mk-cap v1">第1会場</div><div class="mk-in"><small>10:30〜12:00</small><b>教育講演</b><div class="mk-pills"><i>岡山 太郎</i><i>倉敷 花子</i><i>津山 一郎</i></div><div class="mk-btn v1">入室</div></div></div>${tap("44%","calc(100% - 62px)","2")}`,
+     li:["<b>①</b> 入る会場のボタン（第1会場／第2会場）を押します。","<b>②</b> 会場に入ったら<b>「入室」</b>を押します。","入室した人の名前と人数が、全員の画面に表示されます。"]},
+    {t:"プログラムごとに押し直す",
+     ill:`<div class="mk-card off"><div class="mk-in"><small>10:30〜12:00</small><b>教育講演</b><div class="mk-done">終了</div></div></div><div class="mk-arrow">▼ 次のプログラムに自動で切り替わります</div>
+       <div class="mk-card"><div class="mk-in"><small>13:00〜14:30</small><b>シンポジウム</b><div class="mk-btn v1">入室</div><div class="mk-link">退室する（入室を取り消す）</div></div></div>${tap("44%","calc(100% - 84px)","")}`,
+     li:["プログラムが終わると、次のプログラムに切り替わります。","<b>そのたびに「入室」を押し直してください。</b>","押し間違えたときは「退室する（入室を取り消す）」で取り消せます。","同じ時間に別の会場で入室すると、前の会場の入室は自動で取り消されます。"]},
+    {t:"担当のお知らせとコメント",
+     ill:`<div class="mk-mine">10:30～ 第1会場のスタッフ担当です。</div>
+       <div class="mk-card"><div class="mk-in"><b>教育講演</b><div class="mk-pills"><i class="d">岡山 太郎</i><i>倉敷 花子</i></div></div><div class="mk-cbar">この会場のコメント<i class="badge">2</i><span>開く ▼</span></div></div>${tap("40%","calc(100% - 52px)","")}`,
+     li:["自分が担当のプログラムが近づくと、画面の上に<b class=\"gduty\">紫色のお知らせ</b>が出ます。","担当の人が入室すると、名前が紫色で表示されます。","カードの一番下の「この会場のコメント」を押すと、その会場のコメントを読み書きできます。読んでいないコメントは<b>赤い丸</b>に件数が出ます。"]},
+    {t:"日程とスタッフの確認",
+     ill:`<div class="mk-zoom"><div class="mk-tt sm"><div class="mk-col"><div class="mk-h v1">第1会場</div><div class="mk-b v1" style="height:20px">開会式</div><div class="mk-b v1 now" style="height:42px">教育講演</div><div class="mk-b v1" style="height:28px">シンポ</div></div><div class="mk-col"><div class="mk-h v2">第2会場</div><div class="mk-b v2" style="height:31px">一般演題</div><div class="mk-b v2" style="height:36px">WS</div><div class="mk-b v2" style="height:23px">一般演題</div></div><div class="mk-now" style="top:58px"></div><i class="mk-lens"></i></div>
+       <div class="mk-zarr">拡大<b>▶</b></div>
+       <div class="mk-zbig"><div class="mk-b v1 now"><small>10:30〜12:00</small>教育講演<em>${ROLE}：岡山 太郎</em></div><div class="mk-zctl"><span>－</span><span>150%</span><span>＋</span></div></div></div>
+       <div class="mk-nav"><span>いまの会場</span><span class="on">日程・担当</span><span>スタッフ</span></div>`,
+     li:["<b>日程・担当</b>：時間割が見られます。2本の指で広げるか「＋」ボタンで拡大でき、プログラム名や担当者が大きく見られます。枠を押すと、担当者と入室した人を確認できます。","<b>スタッフ</b>：各会場の人数と、スタッフ全員がどの会場にいるかを確認できます。","この説明は、画面の一番上の「会場スタッフ入室ボード」の横にある<b>「？」</b>を押すと、いつでも見直せます。"]},
+  ];
+  return `<main class="auth guide"><h2>使い方 <small>${pg+1} / ${GUIDE_N}</small><button class="gclose" data-act="guideclose" aria-label="閉じる">×</button></h2>
+    <div class="gwrap"><div class="gtrack" style="transform:translateX(${-pg*100}%)">${slides.map((x,i)=>`<section class="gslide" aria-hidden="${i!==pg}">
+      <h3>${x.t}</h3><div class="gill">${x.ill}</div><ul>${x.li.map(l=>`<li>${l}</li>`).join("")}</ul></section>`).join("")}</div></div>
+    <div class="gdots">${slides.map((_,i)=>`<button class="${i===pg?"on":""}" data-act="gpage" data-v="${i}" aria-label="${i+1}ページ目"></button>`).join("")}</div>
+    ${pg===GUIDE_N-1?(S.guide?"":`<label class="chk"><input type="checkbox" id="guidehide" ${S.ghide?"checked":""}> 今後表示しない</label>`):`<p class="note" style="text-align:center;margin:0">左右にスライドしても進めます（画面は例です）</p>`}
+    <div class="gnav">${pg>0?`<button class="btn sub" data-act="gpage" data-v="${pg-1}">戻る</button>`:""}${pg<GUIDE_N-1?`<button class="btn plain" data-act="gpage" data-v="${pg+1}">次へ</button>`:`<button class="btn plain" data-act="guideok">確認した</button>`}</div></main>`;
 }
 
 function chipFor(p){
@@ -716,7 +811,7 @@ function staffView(){
       ${r.w[1]?`<span class="where ${r.w[2]?"wd":"w"+r.w[0]}">${r.w[1]}${r.w[2]?"・"+ROLE:""}</span>`:""}
       ${admin&&!self?`<button class="sm" data-act="toggleadmin" data-e="${esc(r.m.email)}">${r.m.is_admin?"管理者解除":"管理者に"}</button><button class="sm danger" data-act="delmember" data-e="${esc(r.m.email)}">削除</button>`:""}</div>`;
   }
-  h+=`<button class="link" data-act="logout">ログアウト</button>`;
+  h+=`<button class="link" data-act="guide">使い方を見る</button>　<button class="link" data-act="logout">ログアウト</button>`;
   return h;
 }
 
@@ -753,8 +848,16 @@ $app.addEventListener("click", async ev=>{
   if(a==="cdel"){ if(confirm("このコメントを削除しますか？")) return act(()=>api.delComment(b.dataset.id)); return; }
   if(a==="editname"){ S.editName=true; S.err=null; return render(true); }
   if(a==="cancelname"){ S.editName=false; return render(true); }
+  if(a==="guide"){ S.guide=true; S.gpage=0; S.ghide=false; window.scrollTo(0,0); return render(true); }
+  if(a==="gpage"){ S.gpage=+b.dataset.v; window.scrollTo(0,0); return render(true); }
+  if(a==="guideclose"){ S.guide=false; S.guideOk=true; S.gpage=0; S.ghide=false; window.scrollTo(0,0); return render(true); }
+  if(a==="guideok"){
+    const c=document.getElementById("guidehide");
+    if(!S.guide) try{ if(c&&c.checked) localStorage.setItem(guideKey(),"1"); else localStorage.removeItem(guideKey()); }catch(e){}
+    S.guide=false; S.guideOk=true; S.gpage=0; S.ghide=false; window.scrollTo(0,0); return render(true);
+  }
   if(a==="resend"){ S.sent=null; S.err=null; return render(true); }
-  if(a==="logout"){ S.editName=false; S.sent=null; await api.signOut(); return; }
+  if(a==="logout"){ S.editName=false; S.sent=null; S.guide=false; S.guideOk=false; await api.signOut(); return; }
   if(a==="send"){
     const email=(document.getElementById("email").value||"").trim().toLowerCase();
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ S.err="メールアドレスを正しく入力してください。"; return render(true); }
@@ -825,7 +928,19 @@ $app.addEventListener("touchmove", ev=>{ if(!pinch||ev.touches.length!==2) retur
   const [x,y]=tmid(ev.touches); setZoom(pinch.z*tdist(ev.touches)/pinch.d, true, pinch.a&&{...pinch.a, sx:x, sy:y}); }, {passive:false});
 $app.addEventListener("touchend", ()=>{ if(pinch){ pinch=null; saveZoom(); } });   // 指を離した位置のまま確定（再描画しないので表示が跳ばない）
 $app.addEventListener("gesturestart", ev=>{ if(ev.target.closest && ev.target.closest(".tt-wrap")) ev.preventDefault(); });
-$app.addEventListener("focusout", ()=>setTimeout(()=>{ if(S.dirty) render(); },50));
+let gsw=null;   // 使い方のスライドを指で左右に送る
+$app.addEventListener("touchstart", ev=>{ gsw = ev.touches.length===1 && ev.target.closest(".gwrap") ? {x:ev.touches[0].clientX, y:ev.touches[0].clientY} : null; }, {passive:true});
+$app.addEventListener("touchend", ev=>{ if(!gsw) return; const t=ev.changedTouches[0], dx=t.clientX-gsw.x, dy=t.clientY-gsw.y; gsw=null;
+  if(Math.abs(dx)<50 || Math.abs(dx)<Math.abs(dy)) return;
+  const n=Math.min(Math.max((S.gpage||0)+(dx<0?1:-1),0),GUIDE_N-1); if(n!==(S.gpage||0)){ S.gpage=n; render(true); } });
+$app.addEventListener("change", ev=>{ if(ev.target.id==="guidehide") S.ghide=ev.target.checked; });   // 自動の再描画でチェックが外れないように
+// 入力中に保留した再描画は、入力欄から離れた後に行う。ただしボタンを押している最中に画面を作り直すと
+// その「押す」操作が消える（コメントの送信ボタンが効かない不具合）ため、指・マウスを離して押し終わるまで待つ
+let ptrDown=false;
+const flushDirty=()=>{ if(S.dirty && !ptrDown) render(); };
+$app.addEventListener("pointerdown", ()=>{ ptrDown=true; });
+["pointerup","pointercancel"].forEach(t=>document.addEventListener(t, ()=>{ ptrDown=false; setTimeout(flushDirty,400); }));
+$app.addEventListener("focusout", ()=>setTimeout(flushDirty,50));
 
 /* ---------- 起動 ---------- */
 (async function boot(){

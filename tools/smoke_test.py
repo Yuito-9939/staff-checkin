@@ -3,22 +3,35 @@
 実行:  python3 tools/smoke_test.py      （リポジトリ直下で）
 結果:  すべて OK と表示されれば成功。tools/shots/ に画面キャプチャを保存します。
 """
-import asyncio, pathlib, sys
+import asyncio, pathlib, shutil, sys, tempfile
 from playwright.async_api import async_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-BASE = (ROOT / "index.html").as_uri()
+# config.js に本番の接続情報が入っていても、空の config.js を置いた一時コピーでデモモードとして確認する
+_TMP = pathlib.Path(tempfile.mkdtemp(prefix="staff-checkin-test-"))
+shutil.copy(ROOT / "index.html", _TMP / "index.html")
+(_TMP / "config.js").write_text('window.APP_CONFIG = { SUPABASE_URL: "", SUPABASE_ANON_KEY: "" };', encoding="utf-8")
+BASE = (_TMP / "index.html").as_uri()
 SHOTS = ROOT / "tools" / "shots"
 fails = []
 def check(name, cond):
     print(("OK  " if cond else "NG  ") + name)
     if not cond: fails.append(name)
 
+async def guide_finish(pg, hide):
+    """使い方のスライドを最後まで「次へ」で進め、確認する"""
+    while await pg.locator(".gnav [data-act=gpage]:has-text('次へ')").count():
+        await pg.click(".gnav [data-act=gpage]:has-text('次へ')")
+    if hide: await pg.check("#guidehide")
+    await pg.click("[data-act=guideok]")
+
 async def login(pg, now):
     await pg.goto(f"{BASE}?now={now}")
     if await pg.locator("#email").count():
         await pg.fill("#email", "me@example.com"); await pg.click("[data-act=send]")
         await pg.wait_for_selector("#name"); await pg.fill("#name", "岡山 太郎"); await pg.click("[data-act=savename]")
+    if await pg.locator(".guide").count():
+        await guide_finish(pg, True)
     await pg.wait_for_selector(".vsel")
 
 async def main():
@@ -27,6 +40,43 @@ async def main():
         b = await p.chromium.launch()
         pg = await b.new_page(viewport={"width": 390, "height": 844}, device_scale_factor=2)
         errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
+
+        # 使い方の案内：氏名入力後に出る → チェックなしで確認 → 再読み込みでまた出る → チェックして確認 → もう出ない
+        await pg.goto(f"{BASE}?now=2026-11-20T08:27")
+        await pg.fill("#email", "me@example.com"); await pg.click("[data-act=send]")
+        await pg.wait_for_selector("#name"); await pg.fill("#name", "岡山 太郎"); await pg.click("[data-act=savename]")
+        await pg.wait_for_selector(".guide")
+        check("氏名入力後に使い方の案内が出る（1/4）", "1 / 4" in await pg.locator(".guide h2").inner_text())
+        check("最初のページにはチェック欄・確認ボタンがない", await pg.locator("#guidehide").count() == 0 and await pg.locator("[data-act=guideok]").count() == 0)
+        for i in range(4):
+            await pg.wait_for_timeout(350); await pg.screenshot(path=str(SHOTS / f"guide{i+1}.png"), full_page=True)
+            if i < 3: await pg.click(".gnav [data-act=gpage]:has-text('次へ')")
+        check("4ページ目にチェック欄と確認ボタン", await pg.locator("#guidehide").count() == 1 and await pg.locator("[data-act=guideok]").count() == 1)
+        await pg.check("#guidehide"); await pg.evaluate("render(true)")
+        check("自動の再描画でチェックが外れない", await pg.locator("#guidehide").is_checked())
+        await pg.uncheck("#guidehide")
+        await pg.click(".gnav [data-act=gpage]:has-text('戻る')")
+        check("戻るで前のページへ", "3 / 4" in await pg.locator(".guide h2").inner_text())
+        await guide_finish(pg, False); await pg.wait_for_selector(".vsel")
+        await pg.reload(); await pg.wait_for_timeout(300)
+        check("チェックなしなら次回も案内が出る", await pg.locator(".guide").count() == 1)
+        await guide_finish(pg, True); await pg.wait_for_selector(".vsel")
+        await pg.reload(); await pg.wait_for_timeout(300)
+        check("「今後表示しない」なら次回は出ない", await pg.locator(".guide").count() == 0 and await pg.locator(".vsel").count() == 1)
+        await pg.click("[data-act=tab][data-v=staff]"); await pg.click("[data-act=guide]")
+        check("スタッフタブから使い方を見直せる", await pg.locator(".guide").count() == 1)
+        await guide_finish(pg, False)
+        await pg.click("header .help")
+        check("見出しの「？」から使い方を見直せる", await pg.locator(".guide").count() == 1 and "1 / 4" in await pg.locator(".guide h2").inner_text())
+        for i in range(3): await pg.click(".gnav [data-act=gpage]:has-text('次へ')")
+        check("「？」から開いたときは「今後表示しない」を出さない", await pg.locator("#guidehide").count() == 0 and await pg.locator("[data-act=guideok]").count() == 1)
+        await pg.click("[data-act=guideok]")
+        await pg.reload(); await pg.wait_for_timeout(300)
+        check("「？」から見て確認しても「今後表示しない」の記憶は変わらない", await pg.locator(".guide").count() == 0)
+        await pg.click("header .help"); await pg.click(".gnav [data-act=gpage]:has-text('次へ')")
+        check("各ページに × がある", await pg.locator(".gclose").count() == 1)
+        await pg.click(".gclose")
+        check("× で閉じられる", await pg.locator(".guide").count() == 0 and await pg.locator(".vsel").count() == 1)
 
         await login(pg, "2026-11-20T08:27")
         check("初期状態では会場カードを出さない", await pg.locator(".card").count() == 0)
@@ -46,6 +96,16 @@ async def main():
         await pg.fill("#cm-1", "了解<b>"); await pg.press("#cm-1", "Enter"); await pg.wait_for_timeout(300)
         check("コメント送信（HTMLはエスケープ）", (await pg.locator(".cm-b").all_inner_texts())[-1] == "了解<b>")
         check("コメント欄を開くと既読になりバッジが消える（自分のコメントは数えない）", await pg.locator(".badge").count() == 0)
+        # ゆっくり入力している間に自動更新が来ても、入力中の文字が消えず、送信ボタンを（人の速さで）押せば送れる
+        await pg.click("#cm-1"); await pg.keyboard.type("ゆっくり入力")
+        await pg.evaluate("refresh()"); await pg.wait_for_timeout(300)
+        bx = await pg.locator("[data-act=csend]").first.bounding_box()
+        await pg.mouse.move(bx["x"]+10, bx["y"]+10); await pg.mouse.down(); await pg.wait_for_timeout(200); await pg.mouse.up(); await pg.wait_for_timeout(700)
+        check("入力中に自動更新が来ても、送信ボタンでコメントを送れる", (await pg.locator(".cm-b").all_inner_texts())[-1] == "ゆっくり入力")
+        await pg.click("#cm-1"); await pg.keyboard.type("途中"); await pg.evaluate("refresh()")
+        await pg.locator(".card .title").first.click(); await pg.wait_for_timeout(600)
+        check("入力欄から離れて自動更新されても、入力途中の文字は残る", await pg.locator("#cm-1").input_value() == "途中")
+        await pg.fill("#cm-1", "")
         await pg.click(".cbar"); await pg.evaluate("api.demoComment('d1v1-0820','demo-2','照明OKです');refresh()"); await pg.wait_for_timeout(300)
         check("閉じている間に届いたコメントは再びバッジ表示", await pg.locator(".cbar .badge").all_inner_texts() == ["1"])
         await pg.evaluate("window.scrollTo(0,0)"); await pg.screenshot(path=str(SHOTS / "badge.png"))
